@@ -57,7 +57,7 @@ def last_write(last):
 def group_load():
     with open("group.json", 'r') as f:
         file = f.readlines()
-        return json.loads(file[0])["2"]
+        return json.loads(file[0])["1"]
 ##################################################################
 
 #secret tokens
@@ -170,46 +170,48 @@ def add(person, peep):
 ##################################################################
 
 def command(message, peep):
-     if (str(message['text'][3:]).strip() == "Realness Ranking"):     
-        return ("", "realrank", True)   
-     else:
-        rest = (str(message['text'][3:]).strip()).split()
-        if (len(rest) > 1):
-            if (rest[0] == "notreal"):
-                if (rest[1] not in peep.values()):
-                    return ("", "nameerror", True)
-                minus(rest[1], peep)
-                return(rest[1], "not", True)
-            elif (rest[0] == "veryreal"):
-                if (rest[1:] not in peep.values()):
-                    return ("", "nameerror", True)
-                add(rest[1], peep)    
-                return (rest[1], "very", True)
-            elif (rest[0] == "help"):
-                return (rest[1:], "help", "True")
-            else:
-                return ("", "commanderror", True) 
+    rest = (str(message['text'][3:]).strip()).lower().split()
+    if (len(rest) > 1):
+        if (str(message['text'][3:]).lower().strip() == "realness ranking"):     
+            return ("", "realrank", True)  
+        elif (rest[0] == "notreal"):
+            if (rest[1].capitalize() not in peep.values()):
+                return ("", "nameerror", True)
+            minus(rest[1].capitalize(), peep)
+            return(rest[1].capitalize(), "not", True)
+        elif (rest[0] == "veryreal"):
+            if (rest[1].capitalize() not in peep.values()):
+                return ("", "nameerror", True)
+            add(rest[1].capitalize(), peep)    
+            return (rest[1].capitalize(), "very", True)
+        elif (rest[0] == "help"):
+            return (rest[1:], "help", "True")
         else:
-            return ("", "help", "True")
+            return ("", "commanderror", True) 
+    else:
+        return ("", "help", "True")
 ##################################################################
 
 def initial_check(message, last, peep, bot_params):
     if (message['id'] == last):
-        return True
+        return (True, True)
+    elif (message['text'] is None):
+        return (True, False)
     elif message['user_id'] not in peep:
-        return True
+        return (True, False)
     elif (message['text'][:3] != "@rb"):
-        return False    
+        return (False, False)
     else:
         person, reason, truth = command(message, peep)
         form_comment(person, reason, bot_params)
-        return truth
+        return (True, False)
 ##################################################################
 
 #send the words to specific people        
 def analyze(message, last, peep, bot_params):
-    if initial_check(message, last, peep, bot_params):
-        return True
+    checkret, checkbreak = initial_check(message, last, peep, bot_params)
+    if checkret:
+        return checkbreak
     
     person = peep[message['user_id']]
     words = message['text'].split()
@@ -226,7 +228,7 @@ def analyze(message, last, peep, bot_params):
 def run(last, peep, group, request_params, bot_params):
     global last_read
     i = 0
-    while(i < 200):
+    while(i < 2000):
         response_messages = read(group, request_params)
         for message in response_messages:
             check = analyze(message, last, peep, bot_params)
