@@ -74,6 +74,13 @@ def value_load():
         file = f.readlines()
         return json.loads(file[0])
 ##################################################################
+
+#the value table
+def value_write():
+    global tallies
+    with open("realness.json", 'w') as f:
+        f.write(json.dumps(tallies))
+##################################################################
     
 def read(group, request_params):
     response_messages = requests.get('https://api.groupme.com/v3/groups/'+ group +'/messages', params = request_params).json()['response']['messages']
@@ -94,57 +101,122 @@ def form_comment(person, reason, bot_params):
                     'Sam: ' + str(tallies['Sam']) + '\n' +
                     'Bryan: ' + str(tallies['Bryan']))
         comment(bot_params)
-    else:
+    elif (reason == "not"):
         bot_params['text'] = 'Not Real. @' + person
         comment(bot_params)
-    com = {"Victor":{}, "Alex":{}, "Sean":{}, "Sam":{}, "Carter":{}, "Bryan":{}}
+    elif (reason == "very"):
+        bot_params['text'] = 'Very Real. @' + person
+        comment(bot_params)
+    elif (reason == "nameerror"):
+        bot_params['text'] = "I don't recognize that name"
+        comment(bot_params)
+    elif (reason == "commanderror"):
+        bot_params['text'] = "I don't recognize that command"
+        comment(bot_params)
+    elif (reason == "help"):
+        if (person == ["notreal"]):
+            bot_params['text'] = ("The notreal command is used to shame a user for their lack of realness\n" +
+                                  "Example: @db notreal Carter")
+        elif (person == ["veryreal"]):
+            bot_params['text'] = ("The veryreal command is used to reward a user for their excess of realness\n" +
+                                  "Example: @db veryreal Carter")
+        elif (person == ["Realness", "Ranking"]):
+            bot_params['text'] = ("The Realness Ranking command shows how real everyone is\n" +
+                                  "Example: @db Realness Ranking")
+        else:
+            bot_params['text'] = ("These are the following commands:\n" +
+                                  "notreal [name]\n" + 
+                                  "veryreal [name]\n" +
+                                  "Realness Ranking")
+        comment(bot_params)
+#    com = {"Victor":{}, "Alex":{}, "Sean":{}, "Sam":{}, "Carter":{}, "Bryan":{}}
 ##################################################################
     
 #Deal with indivudal people
-def anybody(person, word):
-    global tallies
+def anybody(person, word, peep, bot_params):
     if word in vwords:
-        tallies[person] -= 1
+        minus(person, peep)
     elif word in vwords2:
-        tallies[person] += 1
+        add(person, peep)
     else:
         return
-    form_comment(person, word)
-        
+    form_comment(person, word, bot_params)        
+##################################################################
 
-def everyone(word):
+def everyone(word, peep, bot_params):
     global tallies
     if word in anywords:
-        tallies["Victor"] -= 1
-        tallies["Carter"] -= 1
-        tallies["Alex"] -= 1
-        tallies["Sean"] -= 1
-        tallies["Sam"] -= 1
-        tallies["Bryan"] -= 1
+        minus("all", peep)
     elif word in anywords2:
-        tallies["Victor"] += 1
-        tallies["Carter"] += 1
-        tallies["Alex"] += 1
-        tallies["Sean"] += 1
-        tallies["Sam"] += 1
-        tallies["Bryan"] += 1
+        add("all", peep)
+##################################################################
+
+def minus(person, peep):
+    global tallies
+    if (person == "all"):
+        for i in peep.values():
+            tallies[i] -= 1
+    else:
+        tallies[person] -= 1
+##################################################################
+        
+def add(person, peep):
+    global tallies
+    if (person == "all"):
+        for i in peep.values():
+            tallies[i] += 1
+    else:
+        tallies[person] += 1
+##################################################################
+
+def command(message, peep):
+     if (str(message['text'][3:]).strip() == "Realness Ranking"):     
+        return ("", "realrank", True)   
+     else:
+        rest = (str(message['text'][3:]).strip()).split()
+        if (len(rest) > 1):
+            if (rest[0] == "notreal"):
+                if (rest[1] not in peep.values()):
+                    return ("", "nameerror", True)
+                minus(rest[1], peep)
+                return(rest[1], "not", True)
+            elif (rest[0] == "veryreal"):
+                if (rest[1:] not in peep.values()):
+                    return ("", "nameerror", True)
+                add(rest[1], peep)    
+                return (rest[1], "very", True)
+            elif (rest[0] == "help"):
+                return (rest[1:], "help", "True")
+            else:
+                return ("", "commanderror", True) 
+        else:
+            return ("", "help", "True")
+##################################################################
+
+def initial_check(message, last, peep, bot_params):
+    if (message['id'] == last):
+        return True
+    elif message['user_id'] not in peep:
+        return True
+    elif (message['text'][:3] != "@rb"):
+        return False    
+    else:
+        person, reason, truth = command(message, peep)
+        form_comment(person, reason, bot_params)
+        return truth
 ##################################################################
 
 #send the words to specific people        
 def analyze(message, last, peep, bot_params):
-    if (message['id'] == last):
+    if initial_check(message, last, peep, bot_params):
         return True
-    elif message['user_id'] not in peep:
-        return False
-    elif (str(message['text']).strip() == "Realness Ranking"):
-        form_comment("","realrank", bot_params)
     
     person = peep[message['user_id']]
     words = message['text'].split()
     
     for word in words:
-        anybody(person, word)
-        everyone(word)
+        anybody(person, word, peep, bot_params)
+        everyone(word, peep, bot_params)
     with open("realness.json", 'w') as f:
         f.write(json.dumps(tallies))
     return False        
@@ -165,6 +237,7 @@ def run(last, peep, group, request_params, bot_params):
         last = message['id']
         last_write(last_read)
         i += 1
+        value_write()
         time.sleep(1)
 ##################################################################
 
