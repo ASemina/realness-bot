@@ -91,7 +91,7 @@ def comment(bot_params):
     response = requests.post('https://api.groupme.com/v3/bots/post', data= bot_params)
 ##################################################################
 
-def form_comment(person, reason, bot_params):
+def form_comment(person, reason, bot_params, message=""):
     if (reason == "realrank"):
         bot_params['text'] = ('The current realness levels are:\n' +
                     'Victor: ' + str(tallies['Victor']) + '\n' +
@@ -128,6 +128,10 @@ def form_comment(person, reason, bot_params):
                                   "notreal [name]\n" + 
                                   "veryreal [name]\n" +
                                   "Realness Ranking")
+        comment(bot_params)
+    elif (reason[0] == "all"):
+        bot_params['attachments'] = [{'loci': [[0, 1], [2,1], [4,1], [6,1], [8,1], [10,1]], 'type':'mentions', 'user_ids':list(person)}]
+        bot_params['text'] = "@everyone " + ' '.join(reason[1])
         comment(bot_params)
 #    com = {"Victor":{}, "Alex":{}, "Sean":{}, "Sam":{}, "Carter":{}, "Bryan":{}}
 ##################################################################
@@ -185,11 +189,14 @@ def command(message, peep):
             add(rest[1].capitalize(), peep)    
             return (rest[1].capitalize(), "very", True)
         elif (rest[0] == "help"):
-            return (rest[1:], "help", "True")
+            return (rest[1:], "help", True)
+        elif (rest[0] == "all"):
+            p = [*peep]
+            return (p, [rest[0], rest[1:]], True)
         else:
-            return ("", "commanderror", True) 
+            return ("", "commanderror", True)         
     else:
-        return ("", "help", "True")
+        return ("", "help", True)
 ##################################################################
 
 def initial_check(message, last, peep, bot_params):
@@ -228,16 +235,16 @@ def analyze(message, last, peep, bot_params):
 def run(last, peep, group, request_params, bot_params):
     global last_read
     i = 0
-    while(i < 2000):
+    while(i < 20000):
         response_messages = read(group, request_params)
         for message in response_messages:
             check = analyze(message, last, peep, bot_params)
             if check:
                 break
-            
+
         message = response_messages[0]
         last = message['id']
-        last_write(last_read)
+        last_write(last)
         i += 1
         value_write()
         time.sleep(1)
@@ -251,7 +258,7 @@ if __name__ == "__main__":
     tallies = value_load()
     
     request_params = {'token': auth["token"]}
-    bot_params = {'text':'','bot_id': auth["bot_id"]}
+    bot_params = {'text':'','bot_id': auth["bot_id"], 'attachments':[]}
     
     print('The current realness levels are:\n' \
                 'Victor: ' + str(tallies['Victor']) + '\n' \
