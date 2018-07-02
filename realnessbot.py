@@ -33,9 +33,16 @@ anywords2 = []
 
 ##################################################################
 
-#load id -> names
+#load ids -> names
 def people_load():
     with open("people.json", 'r') as f:
+        file = f.readlines()
+        return json.loads(file[0])
+##################################################################
+        
+#load names -> ids
+def people2_load():
+    with open("people2.json", 'r') as f:
         file = f.readlines()
         return json.loads(file[0])
 ##################################################################
@@ -113,6 +120,9 @@ def form_comment(person, reason, bot_params, message=""):
     elif (reason == "commanderror"):
         bot_params['text'] = "I don't recognize that command"
         comment(bot_params)
+    elif (reason == "invalid"):
+        bot_params['text'] = "That's not how that works"
+        comment(bot_params)
     elif (reason[0] == "help"):
         if (reason[1] == ["notreal"]):
             bot_params['text'] = ("The notreal command is used to shame a user for their lack of realness\n" +
@@ -173,7 +183,7 @@ def add(person, peep):
         tallies[person] += 1
 ##################################################################
 
-def command(message, peep):
+def command(message, peep, people_reverse):
     rest = (str(message['text'][3:]).strip()).lower().split()
     if (len(rest) > 1):
         if (str(message['text'][3:]).lower().strip() == "realness ranking"):     
@@ -186,6 +196,8 @@ def command(message, peep):
         elif (rest[0] == "veryreal"):
             if (rest[1].capitalize() not in peep.values()):
                 return ("", "nameerror", True)
+            if (message['user_id'] == people_reverse[rest[1].capitalize()]):
+                return ("", "invalid", True)
             add(rest[1].capitalize(), peep)    
             return (rest[1].capitalize(), "very", True)
         elif (rest[0] == "help"):
@@ -196,10 +208,10 @@ def command(message, peep):
         else:
             return ("", "commanderror", True)         
     else:
-        return ("", "help", True)
+        return ("", ["help", ''], True)
 ##################################################################
 
-def initial_check(message, last, peep, bot_params):
+def initial_check(message, last, peep, bot_params, people_reverse):
     if (message['id'] == last):
         return (True, True)
     elif (message['text'] is None):
@@ -209,14 +221,14 @@ def initial_check(message, last, peep, bot_params):
     elif (message['text'][:3] != "@rb"):
         return (False, False)
     else:
-        person, reason, truth = command(message, peep)
+        person, reason, truth = command(message, peep, people_reverse)
         form_comment(person, reason, bot_params)
         return (True, False)
 ##################################################################
 
 #send the words to specific people        
-def analyze(message, last, peep, bot_params):
-    checkret, checkbreak = initial_check(message, last, peep, bot_params)
+def analyze(message, last, peep, bot_params, people_reverse):
+    checkret, checkbreak = initial_check(message, last, peep, bot_params, people_reverse)
     if checkret:
         return checkbreak
     
@@ -232,13 +244,13 @@ def analyze(message, last, peep, bot_params):
 ##################################################################
 
 #Get the messages, finds ones it hasn't read s
-def run(last, peep, group, request_params, bot_params):
+def run(last, peep, group, request_params, bot_params, people_reverse):
     global last_read
     i = 0
     while(i < 20000):
         response_messages = read(group, request_params)
         for message in response_messages:
-            check = analyze(message, last, peep, bot_params)
+            check = analyze(message, last, peep, bot_params, people_reverse)
             if check:
                 break
 
@@ -252,6 +264,7 @@ def run(last, peep, group, request_params, bot_params):
 
 if __name__ == "__main__":
     people = people_load()
+    people_reverse = people2_load()
     last_read = last_load()
     group_id = group_load()
     auth = auth_load()
@@ -267,7 +280,7 @@ if __name__ == "__main__":
                 'Sean: ' + str(tallies['Sean']) + '\n' \
                 'Sam: ' + str(tallies['Sam']) + '\n' \
                 'Bryan: ' + str(tallies['Bryan']))
-    run(last_read, people, group_id, request_params, bot_params)
+    run(last_read, people, group_id, request_params, bot_params, people_reverse)
     
     
     
