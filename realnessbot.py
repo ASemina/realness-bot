@@ -113,14 +113,14 @@ def form_comment(person, reason, bot_params, message=""):
     elif (reason == "commanderror"):
         bot_params['text'] = "I don't recognize that command"
         comment(bot_params)
-    elif (reason == "help"):
-        if (person == ["notreal"]):
+    elif (reason[0] == "help"):
+        if (reason[1] == ["notreal"]):
             bot_params['text'] = ("The notreal command is used to shame a user for their lack of realness\n" +
                                   "Example: @db notreal Carter")
-        elif (person == ["veryreal"]):
+        elif (reason[1] == ["veryreal"]):
             bot_params['text'] = ("The veryreal command is used to reward a user for their excess of realness\n" +
                                   "Example: @db veryreal Carter")
-        elif (person == ["Realness", "Ranking"]):
+        elif (reason[1] == ["Realness", "Ranking"]):
             bot_params['text'] = ("The Realness Ranking command shows how real everyone is\n" +
                                   "Example: @db Realness Ranking")
         else:
@@ -189,7 +189,7 @@ def command(message, peep):
             add(rest[1].capitalize(), peep)    
             return (rest[1].capitalize(), "very", True)
         elif (rest[0] == "help"):
-            return (rest[1:], "help", True)
+            return ("", ["help", rest[1:]], True)
         elif (rest[0] == "all"):
             p = [*peep]
             return (p, [rest[0], rest[1:]], True)
